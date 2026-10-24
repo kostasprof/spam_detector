@@ -1,4 +1,6 @@
 from pathlib import Path
+from statistics import median
+from sklearn.model_selection import train_test_split
 
 dataset_path = Path(__file__).resolve().parent.parent / "data" / "SMSSpamCollection"
 
@@ -13,6 +15,16 @@ def load_dataset():
             messages.append((label, message))
             
     return messages
+
+'''
+Seperate labels with message into 2 lists
+'''
+def prepare_dataset(messages):
+    texts = [message[1] for message in messages]
+    labels = [message[0] for message in messages]
+    return texts,labels
+        
+
 
 '''
 Count spam/ham messages and the % of spam
@@ -64,7 +76,45 @@ def message_stats(messages,spam_count,ham_count):
     ham_stats = [average_words_ham,average_ham_size,max_ham_length]
     
     return spam_stats,ham_stats
-        
+
+'''
+Find the median message length in characters for spam or ham messages
+'''
+def find_median(messages):
+    ham_lengths = []
+    spam_lengths = []
+    for message in messages:
+        if message[0] == "spam":
+            spam_lengths.append(len(message[1]))
+        elif message[0] == "ham":
+            ham_lengths.append(len(message[1]))
+            
+    ham_median = median(ham_lengths)
+    spam_median = median(spam_lengths) 
+    return spam_median,ham_median
+
+'''
+Split the data set to a training and testing dataset
+'''
+def split_dataset(texts,labels):
+    #Make test and train data sets
+    texts_train, texts_test, labels_train, labels_test = train_test_split(
+        texts,
+        labels,
+        train_size = 0.8,
+        random_state = 42,
+        stratify = labels
+    )
+    print(f"Training texts total:{len(texts_train)}")
+    print(f"Testing texts total:{len(texts_test)}")
+    print(f"Training labels total:{len(labels_train)}")
+    print(f"Testing labels total:{len(labels_test)}")
+    
+    return texts_train, texts_test, labels_train, labels_test
+
+'''
+Main
+'''
 def main():
     messages = load_dataset()
 
@@ -94,9 +144,23 @@ def main():
     print(f"Ham max message size:{ham_stats[2]}")
     print("-" * 20)
     
-    print(f"Largest message by characters: {max(messages, key = lambda message : len(message[1]))}")
-    print("-" * 20)
+    # print(f"Largest message by characters: {max(messages, key = lambda message : len(message[1]))}")
+    # print("-" * 20)
 
-    print(f"Largest message by words: {max(messages, key = lambda message : len(message[1].split()))}")
+    # print(f"Largest message by words: {max(messages, key = lambda message : len(message[1].split()))}")
+    # print("-" * 20)
+    
+    #median
+    spam_median,ham_median = find_median(messages)
+    print(f"Spam median of length:{spam_median}")
+    print(f"Ham median of length:{ham_median}")
+    
+    #
+    texts,labels = prepare_dataset(messages)
+    print(texts[:2])
+    print(labels[:2])
+    print(f"Texts:{len(texts)}, Labels:{len(labels)})")
+    texts_train, texts_test, labels_train, labels_test = split_dataset(texts,labels)
+
 if __name__ == "__main__":
     main()
