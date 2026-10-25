@@ -1,7 +1,8 @@
 from pathlib import Path
 from statistics import median
 from sklearn.model_selection import train_test_split
-
+from sklearn.feature_extraction.text import TfidfVectorizer
+import model
 dataset_path = Path(__file__).resolve().parent.parent / "data" / "SMSSpamCollection"
 
 
@@ -24,8 +25,6 @@ def prepare_dataset(messages):
     labels = [message[0] for message in messages]
     return texts,labels
         
-
-
 '''
 Count spam/ham messages and the % of spam
 '''
@@ -113,54 +112,14 @@ def split_dataset(texts,labels):
     return texts_train, texts_test, labels_train, labels_test
 
 '''
-Main
+Convert text into TF-IDF features
 '''
-def main():
-    messages = load_dataset()
-
-    print(f"Total messages: {len(messages)}")
-    print("\nFirst 5 messages:\n")
-
-    for label, message in messages[:5]:
-        print(f"Label: {label}")
-        print(f"Message: {message}")
-        print("-" * 40)
-
-    spam_counter,ham_counter,spam_percent = analyze(messages)
-    print(f"Total spam messages:{spam_counter}")
-    print(f"Total ham messages:{ham_counter}")
-    print(f"Spam percentage:{spam_percent}")
-    print("-" * 40)
+def vectorize_data(train_text,test_text):
+    vectorizer = TfidfVectorizer()
+    x_train_vect = vectorizer.fit_transform(train_text)
+    x_test_vect = vectorizer.transform(test_text)
     
-    #0: average words, 1 average characters, 2 max msg size
-    spam_stats, ham_stats = message_stats(messages,spam_counter,ham_counter)
-    print(f"Spam average words per message:{spam_stats[0]}")
-    print(f"Spam average characters per message:{spam_stats[1]}")
-    print(f"Spam max message size:{spam_stats[2]}")
-    print("-" * 20)
-    
-    print(f"Ham average words per message:{ham_stats[0]}")
-    print(f"Ham average characters per message:{ham_stats[1]}")
-    print(f"Ham max message size:{ham_stats[2]}")
-    print("-" * 20)
-    
-    # print(f"Largest message by characters: {max(messages, key = lambda message : len(message[1]))}")
-    # print("-" * 20)
+    print(f"Train shape:{x_train_vect.shape}")
+    print(f"Test shape:{x_test_vect.shape}")
+    return x_train_vect,x_test_vect
 
-    # print(f"Largest message by words: {max(messages, key = lambda message : len(message[1].split()))}")
-    # print("-" * 20)
-    
-    #median
-    spam_median,ham_median = find_median(messages)
-    print(f"Spam median of length:{spam_median}")
-    print(f"Ham median of length:{ham_median}")
-    
-    #
-    texts,labels = prepare_dataset(messages)
-    print(texts[:2])
-    print(labels[:2])
-    print(f"Texts:{len(texts)}, Labels:{len(labels)})")
-    texts_train, texts_test, labels_train, labels_test = split_dataset(texts,labels)
-
-if __name__ == "__main__":
-    main()
