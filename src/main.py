@@ -8,11 +8,13 @@ def main():
 
     texts_train, texts_test, labels_train, labels_test = dc.split_dataset(texts,labels)
     
-    train_vect,test_vect = dc.vectorize_data(texts_train,texts_test)
+    vectorizer,train_vect,test_vect = dc.vectorize_data(texts_train,texts_test)
     
-    trained_model = model.train_bayes_model(train_vect,labels_train)
+    trained_bm_model = model.train_bayes_model(train_vect,labels_train)
     
-    model.evaluate_model(trained_model,test_vect,labels_test)
+    trained_lr_model = model.train_lr_model(train_vect,labels_train)
+    
+    model.evaluate_model(trained_bm_model,trained_lr_model,test_vect,labels_test)
     
 if __name__ == "__main__":
     main()

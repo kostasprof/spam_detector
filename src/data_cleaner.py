@@ -121,5 +121,5 @@ def vectorize_data(train_text,test_text):
     
     print(f"Train shape:{x_train_vect.shape}")
     print(f"Test shape:{x_test_vect.shape}")
-    return x_train_vect,x_test_vect
+    return vectorizer,x_train_vect,x_test_vect
 
