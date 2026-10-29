@@ -1,143 +1,131 @@
-# SMS Spam Detector
+# SMS Spam Classifier
 
-A machine learning project that classifies SMS messages as **spam** or **ham** (legitimate messages). The project compares two classification algorithms using TF-IDF text features: Multinomial Naive Bayes and Logistic Regression.
+A small machine learning project that classifies SMS messages as **spam** or **ham** (legitimate) using TF-IDF features and two classic models: **Multinomial Naive Bayes** and **Logistic Regression**. It also explores how lowering the decision threshold of the Logistic Regression model changes the precision/recall trade-off.
 
-## Project Goals
+## Features
 
-- Understand and preprocess a real-world SMS dataset.
-- Convert text messages into numerical features using TF-IDF.
-- Train and compare two machine learning classification models.
-- Evaluate performance using accuracy, precision, recall, F1-score, and a confusion matrix.
-- Investigate ways to improve spam detection.
-- Eventually build an interface that allows users to enter a message and receive a prediction.
-
-## Dataset
-
-The project uses the `SMSSpamCollection` dataset, containing 5,574 SMS messages labelled as either `ham` or `spam`.
-
-| Class | Number of messages | Percentage |
-|---|---:|---:|
-| Ham | 4,827 | 86.6% |
-| Spam | 747 | 13.4% |
-| **Total** | **5,574** | **100%** |
-
-The dataset is imbalanced, with legitimate messages making up the majority of the data. Therefore, accuracy alone is not sufficient to evaluate the models. Spam recall and the number of missed spam messages are also important.
+- Loads and parses the [SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) dataset
+- Dataset analysis helpers: spam/ham counts, spam percentage, average and maximum message length, and median length per class
+- Stratified 80/20 train/test split (reproducible with a fixed random seed)
+- TF-IDF vectorization of message text
+- Trains and compares two models:
+  - Multinomial Naive Bayes
+  - Logistic Regression
+- Reports accuracy, a full classification report, and a labelled confusion breakdown (true/false positives and negatives) for each model
+- Threshold experiment: re-classifies test messages using a custom spam-probability cutoff (default `0.3`) to favour catching more spam
 
 ## Project Structure
 
-```text
-spam_detector/
+```
+project/
 ├── data/
-│   └── SMSSpamCollection
-├── src/
-│   ├── data_cleaner.py
-│   ├── model.py
-│   └── main.py
-└── README.md
+│   └── SMSSpamCollection      # dataset file (tab-separated: label<TAB>message)
+└── src/
+    ├── main.py                # entry point: runs the full pipeline
+    ├── data_cleaner.py        # loading, analysis, splitting, vectorizing
+    └── model.py               # model training and evaluation
 ```
 
-## Data Preprocessing
+> `data_cleaner.py` looks for the dataset at `../data/SMSSpamCollection` relative to its own location, so the `data/` folder must sit one level above the folder containing the Python files.
 
-The preprocessing pipeline currently performs the following steps:
+| File | Responsibility |
+| --- | --- |
+| `main.py` | Orchestrates the pipeline and runs the threshold experiment |
+| `data_cleaner.py` | `load_dataset`, `prepare_dataset`, `analyze`, `message_stats`, `find_median`, `split_dataset`, `vectorize_data` |
+| `model.py` | `train_bayes_model`, `train_lr_model`, `evaluate_model` |
 
-1. **Load the dataset:** Read each message and its corresponding label from the tab-separated dataset.
-2. **Separate features and labels:** Store SMS message text separately from its `spam` or `ham` label.
-3. **Split the data:** Divide the dataset into training and testing sets using an 80/20 split, with stratification to preserve the class proportions.
-4. **Convert text into numerical features:** Use `TfidfVectorizer` to represent messages numerically according to the importance of their terms.
+## Getting Started
 
-The split uses `random_state=42` to make the results reproducible. The TF-IDF vectorizer is fitted on the training messages only and then used to transform the test messages, preventing information from the test set from influencing feature extraction.
+### Prerequisites
 
-### Dataset Split
+- Python 3.8+
+- [scikit-learn](https://scikit-learn.org/)
+- [NumPy](https://numpy.org/)
 
-| Set | Number of messages |
-|---|---:|
-| Training | 4,459 |
-| Testing | 1,115 |
-| Total | 5,574 |
+### Installation
 
-The resulting TF-IDF matrices have 7,716 features, representing the vocabulary learned from the training data.
+```bash
+# (optional) create a virtual environment
+python -m venv venv
+source venv/bin/activate        # on Windows: venv\Scripts\activate
 
-## Machine Learning Models
+pip install scikit-learn numpy
+```
 
-### 1. Multinomial Naive Bayes
+### Get the dataset
 
-Multinomial Naive Bayes is a probabilistic classification algorithm commonly used for text classification. It estimates the probability of a message belonging to each class based on the features present in that message.
+1. Download the SMS Spam Collection from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/228/sms+spam+collection).
+2. Extract it and place the `SMSSpamCollection` file in the `data/` folder (see structure above).
 
-It serves as the initial baseline model for this project.
+Each line of the file should look like:
 
-### 2. Logistic Regression
+```
+ham	Go until jurong point, crazy.. Available only in bugis n great world
+spam	Free entry in 2 a wkly comp to win FA Cup final tkts 21st May 2005...
+```
 
-Logistic Regression is a classification algorithm that estimates the probability of a message belonging to a class. It provides a second model for comparison against the Naive Bayes baseline.
+### Run
 
-Both models are trained using the same training data and TF-IDF features.
+From inside the `src/` folder:
 
-## Evaluation Metrics
+```bash
+python main.py
+```
 
-The models are evaluated using:
+## How It Works
 
-- **Accuracy:** The proportion of all messages classified correctly.
-- **Precision:** Of the messages predicted as spam, the proportion that are actually spam.
-- **Recall:** Of all actual spam messages, the proportion successfully detected.
-- **F1-score:** The harmonic mean of precision and recall.
-- **Confusion matrix:** Shows correctly and incorrectly classified messages.
+1. **Load** – each line is split on the first tab into a `(label, message)` pair.
+2. **Prepare** – messages and labels are separated into two parallel lists.
+3. **Split** – 80% training / 20% testing, stratified by label so both sets keep the same spam/ham ratio (`random_state=42`).
+4. **Vectorize** – a `TfidfVectorizer` is fit on the training text only, then applied to the test text, which avoids data leakage.
+5. **Train** – Naive Bayes and Logistic Regression are fit on the TF-IDF training vectors.
+6. **Evaluate** – both models are scored on the held-out test set.
+7. **Threshold experiment** – Logistic Regression's `predict_proba` output is compared against a custom threshold instead of the default 0.5.
 
-For this project, a false negative is a spam message classified as ham, while a false positive is a legitimate message incorrectly classified as spam.
+### Why experiment with the threshold?
 
-## Initial Results
+In spam filtering, the two kinds of mistakes have different costs. A **false negative** lets spam through; a **false positive** sends a real message to the spam folder. Lowering the threshold below 0.5 makes the model flag a message as spam more readily, which typically raises spam **recall** at the cost of **precision**. Change `threshold` in `main.py` to explore the trade-off:
 
-The following results were obtained on the held-out test set of 1,115 messages.
+```python
+threshold = 0.3   # try 0.2, 0.4, 0.5, 0.7 ...
+```
 
-| Metric | Multinomial Naive Bayes | Logistic Regression |
-|---|---:|---:|
-| Accuracy | 96.23% | 97.49% |
-| Spam precision | 100%* | 100%* |
-| Spam recall | 71.81% | 81.21% |
-| Spam F1-score | 0.84 | 0.90 |
-| True negatives | 966 | 966 |
-| False positives | 0 | 0 |
-| False negatives | 42 | 28 |
-| True positives | 107 | 121 |
+## Example Output
 
-*Precision is rounded to the displayed value. Both models produced zero false positives on this particular test set.
+Running the script prints, for each model, the accuracy, a classification report, and a confusion-matrix breakdown:
 
-### Results Analysis
+```
+===== Multinomial Naive Bayes =====
+Accuracy: ...
+Classification report: ...
+True negatives (ham correctly identified): ...
+False positives (ham incorrectly flagged as spam): ...
+False negatives (spam missed and classified as ham): ...
+True positives (spam correctly identified): ...
 
-Logistic Regression performed better than Multinomial Naive Bayes on the initial evaluation:
+===== Logistic Regression =====
+...
 
-- Accuracy increased from 96.23% to 97.49%.
-- Spam recall increased from approximately 71.8% to 81.2%.
-- The number of missed spam messages decreased from 42 to 28.
+===== Logistic Regression (threshold=0.3) =====
+...
+```
 
-Logistic Regression detected 14 more spam messages than Naive Bayes while producing the same number of false positives on this test set.
+Exact numbers depend on your environment and scikit-learn version.
 
-These results suggest that Logistic Regression is the stronger of the two models in the current experiment. However, performance on this test set does not guarantee the same results on unseen, real-world messages.
+## Dataset
 
-## Current Status
+The [SMS Spam Collection](https://archive.ics.uci.edu/dataset/228/sms+spam+collection) contains 5,574 English SMS messages labelled as `ham` or `spam`. It is imbalanced, with spam making up roughly 13% of messages, which is why the split is stratified and why accuracy alone is not a sufficient metric. Look at precision, recall, and the confusion matrix too.
 
-- [x] Load and inspect the dataset.
-- [x] Separate message text and labels.
-- [x] Split the dataset into training and testing sets.
-- [x] Convert messages into TF-IDF features.
-- [x] Train Multinomial Naive Bayes.
-- [x] Train Logistic Regression.
-- [x] Evaluate and compare both models.
-- [ ] Investigate the classification threshold and its effect on spam recall and false positives.
-- [ ] Validate any improvements without tuning against the test set.
-- [ ] Save the trained model and TF-IDF vectorizer.
-- [ ] Build a message-entry prediction interface.
-- [ ] Complete final testing and documentation.
+Credit: Almeida, T.A., Gómez Hidalgo, J.M., Yamakami, A. (2011). *Contributions to the study of SMS spam filtering: new collection and results.* Proceedings of the 11th ACM Symposium on Document Engineering.
 
-## Technologies
+## Ideas for Future Work
 
-- Python
-- scikit-learn
-- TF-IDF text vectorization
-- Multinomial Naive Bayes
-- Logistic Regression
-- Git and GitHub
+- Add the dataset analysis helpers (`analyze`, `message_stats`, `find_median`) to the main pipeline output
+- Tune hyperparameters (e.g. TF-IDF n-grams, `alpha` for Naive Bayes, `C` for Logistic Regression) with cross-validation
+- Add a precision-recall curve to pick a threshold systematically
+- Save the trained model and vectorizer (e.g. with `joblib`) and add a script to classify new messages
+- Add unit tests for the data-loading and splitting functions
 
-## Future Improvements
+## License
 
-The next step is to investigate whether the Logistic Regression model can detect more spam messages by adjusting its classification threshold. This will involve examining the trade-off between recall and false positives, using validation data for experimentation and retaining the test set for final evaluation.
-
-Once the model has been evaluated, the project will be extended to support predictions on messages entered by a user.
+Add your preferred license here (e.g. MIT).
